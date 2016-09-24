@@ -25,21 +25,25 @@ html
       <br>
       input(name='ing')
       <br>
+      input(name='ing')
+      <br>
 
       <br>
       input(type='submit' value='Salveza')
 
     <h2>Mancaruri salvate</h2>
-    each p in plates
-      - var ing = ''
-      each i in p.ingredients
-        - ing += i.name + ' '
-      <table>
-        <tr>
-          <th>Nume</td>
-          <th>Ingrediente</td>
-          <th>Optiuni</td>
-        </tr>
+
+    <table>
+      <tr>
+        <th>Nume</td>
+        <th>Ingrediente</td>
+        <th>Optiuni</td>
+      </tr>
+      each p in plates
+        - var ing = ''
+        each i in p.ingredients
+          - ing += i.name + ' '
+
         <tr>
           <td>#{p.name}</td>
           <td>#{ing}</td>
@@ -47,7 +51,7 @@ html
             a(href='/delete?id=' + p._id) Sterge
           </td>
         <tr>
-      </table>
+    </table>
 
     <h2>Saptamana asta</h2>
     <p> TODO: </p>
