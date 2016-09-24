@@ -61,6 +61,6 @@ app.get('/delete', function(req, res) {
 });
 
 // Start server
-app.listen(5000, function() {
-  console.log('Server listening on port 5000: http://localhost:5000/')
+app.listen(process.env.PORT || 5000, function() {
+  console.log('Server started. In dev, open: http://localhost:5000/')
 });
