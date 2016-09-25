@@ -32,11 +32,15 @@ app.get('/', function(req, res) {
   }
 
   function gotDay(err, day) {
-    _self.plates.forEach(function(plate) {
-      if (plate._id.toString() == day.plateID) {
-        _self.tomorrow = plate;
-      }
-    });
+    _self.tomorrow = {}
+
+    if (day) {
+      _self.plates.forEach(function(plate) {
+        if (plate._id.toString() == day.plateID) {
+          _self.tomorrow = plate;
+        }
+      });
+    }
 
     res.render('index', {
       'plates'   : _self.plates,
@@ -92,8 +96,6 @@ app.get('/list', function(req, res) {
     days.forEach(function(day) {
       _self.days.push(day.plateID);
 
-      console.log(day.date.getTime())
-      console.log(getTomorrow().getTime())
       if (day.date.getTime() == getTomorrow().getTime()) {
         _self.tomorrow = true;
       }
@@ -101,7 +103,6 @@ app.get('/list', function(req, res) {
 
     // No meal for tomorrow, let's plan it
     if (!_self.tomorrow) {
-      console.log('ceva')
       Plate.find({_id: {$not: {$in: _self.days}}}).exec(gotPlates);
     } else {
       res.redirect('/');
