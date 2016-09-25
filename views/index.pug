@@ -4,7 +4,7 @@ html
   head
     title= FoodPlan
   body
-    <h2>Adauga mancare</h2>
+    h2 Adauga mancare
     form(method='post' action='/save')
       label Numele mancarii: <br>
       input(name='plateName')
@@ -31,8 +31,8 @@ html
       <br>
       input(type='submit' value='Salveza')
 
-    <h2>Mancaruri salvate</h2>
 
+    h2 Mancaruri salvate
     <table>
       <tr>
         <th>Nume</td>
@@ -53,5 +53,6 @@ html
         <tr>
     </table>
 
-    <h2>Saptamana asta</h2>
-    <p> TODO: </p>
+
+    h2 Mancarea de maine
+    h3= tomorrow.name
