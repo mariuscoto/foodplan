@@ -1,7 +1,14 @@
 var express    = require('express');
 var mongoose   = require('mongoose');
 var bodyParser = require('body-parser');
+var cron       = require('node-cron');
+var fs         = require('fs');
 
+
+// Read config
+var config = (JSON.parse(fs.readFileSync('./config.json', 'utf8')));
+
+// Init express app
 var app = module.exports = express();
 
 // App config
@@ -10,11 +17,14 @@ app.set('view engine', 'pug');
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
+// Run scheduler regularly
+cron.schedule('* * * * *', schedulePlates);
+
 // Skip mongoose deprication warning on startup:
 // Mongoose: mpromise (mongoose's default promise library) is deprecated, plug
 // in your own promise library instead: http://mongoosejs.com/docs/promises.html
 mongoose.Promise = global.Promise;
-mongoose.connect('mongodb://admin:admin@ds039125.mlab.com:39125/heroku_b6h4cx6r');
+mongoose.connect(config.mongo_url);
 
 // Require DB schemas
 var Plate = require('./models/plate');
@@ -28,23 +38,43 @@ app.get('/', function(req, res) {
 
   function gotPLates(err, plates) {
     _self.plates = plates;
-    Day.findOne({'date': getTomorrow()}).exec(gotDay);
+
+    // Compute the scheduled plates
+    var present = getDay(0);
+    var future  = getDay(+config.look_forward);
+
+    var query = {'date': {$gte: present, $lte: future}};
+    Day.find(query).exec(gotDays);
   }
 
-  function gotDay(err, day) {
-    _self.tomorrow = {}
+  function gotDays(err, days) {
+    _self.days        = [];
+    _self.ingredients = [];
 
-    if (day) {
-      _self.plates.forEach(function(plate) {
-        if (plate._id.toString() == day.plateID) {
-          _self.tomorrow = plate;
-        }
+    if (days.length) {
+      // Get details for scheduled plates
+      days.forEach(function(day) {
+        _self.plates.forEach(function(plate) {
+          if (plate._id.toString() == day.plateID) {
+            _self.days.push(plate);
+            // Save list of ingredients in plate
+            var plateIngredients = [];
+            plate.ingredients.forEach(function(ing) {
+              plateIngredients.push(ing.name);
+            });
+            // Merge current ingredients with the rest, removing duplicates
+            _self.ingredients = _self.ingredients.concat(plateIngredients.filter(function (item) {
+                return _self.ingredients.indexOf(item) < 0;
+            }));
+          }
+        });
       });
     }
 
     res.render('index', {
-      'plates'   : _self.plates,
-      'tomorrow' : _self.tomorrow
+      'plates'      : _self.plates,
+      'days'        : _self.days,
+      'ingredients' : _self.ingredients
     });
   }
 });
@@ -79,53 +109,101 @@ app.get('/delete', function(req, res) {
   }
 });
 
-app.get('/list', function(req, res) {
+app.get('/run', function(req, res) {
+  schedulePlates();
+  res.redirect('/');
+});
 
+// UTILS
+function schedulePlates() {
   _self = {};
-  _SCHEDULE_IN_ADVANCE = 1;
 
-  // Get plates from last days
-  Day.find().exec(gotDays);
+  // Compute the day in the past, until be retrieve the meals
+  var past = getDay(-config.look_behind);
+  var future = getDay(+config.look_forward);
+
+  // Get plates from defined interval
+  var query = {'date': {$gte: past, $lte: future}};
+  Day.find(query).exec(gotDays);
 
   function gotDays(err, days) {
     if (err) console.log(err);
 
-    _self.days     = [];
-    _self.tomorrow = false;
+    // Saves used plates
+    _self.used = [];
+    // Saves scheduled days
+    _self.days = [];
+    // Knows if all days are scheduled
+    _self.plannedAll = false;
 
     days.forEach(function(day) {
-      _self.days.push(day.plateID);
+      _self.used.push(day.plateID);
+      _self.days.push(day.date.getTime());
 
-      if (day.date.getTime() == getTomorrow().getTime()) {
-        _self.tomorrow = true;
+      // Check if last day is scheduled
+      // Because we plan only consecutive days, this means all days in the
+      // defined interval are planned
+      if (day.date.getTime() == future.getTime()) {
+        _self.plannedAll = true;
       }
     });
 
-    // No meal for tomorrow, let's plan it
-    if (!_self.tomorrow) {
-      Plate.find({_id: {$not: {$in: _self.days}}}).exec(gotPlates);
-    } else {
-      res.redirect('/');
+    // Not all meals in defined interval are set, let's plan them
+    if (!_self.plannedAll) {
+      Plate.find().exec(gotPlates);
     }
   }
 
   function gotPlates(err, plates) {
-    // Get one random plate
-    var randomPlate = shuffle(plates).splice(0, 1)[0];
-
-    new Day({
-      'date'    : getTomorrow(),
-      'plateID' : randomPlate._id
-    }).save(savedDay);
+    // Make sure days starting today to today+look_forward are planned
+    for (var i=0; i<=config.look_forward; i++) {
+      // Find a day that is not planned
+      if (_self.days.indexOf(getDay(i).getTime()) < 0) {
+        // Choose plate
+        var plate = getPlate(plates, _self.used);
+        // TODO: Add plate to list of used ones
+        // Log
+        console.log('Planned ' + plate.name + '(' + plate._id + ') for ' + getDay(i));
+        // Save day
+        new Day({
+          'date'    : getDay(i),
+          'plateID' : plate
+        }).save(savedDay);
+      }
+    }
   }
 
   function savedDay(err) {
     if (err) console.log(err);
-    res.redirect('/');
   }
-});
+}
 
-// UTILS
+function getPlate(all, used) {
+  // Try to get a random plate
+  var plate       = null;
+  var found       = false;
+  var plate_retry = config.plate_retry;
+
+  while (!found && plate_retry !== 0) {
+    // Get one random plate
+    plate = shuffle(all)[0];
+    // Check if already used
+    if (used.indexOf(plate._id.toString()) > -1) {
+      plate_retry--;
+    } else {
+      found = true;
+    }
+  }
+
+  if (!found) {
+    // TODO: If random fails, search for plate
+    console.log('ERR: Fix me!');
+    return null;
+  } else {
+    return plate;
+  }
+}
+
 function shuffle(a) {
   var j, x, i;
   for (i = a.length; i; i--) {
@@ -138,14 +216,15 @@ function shuffle(a) {
   return a;
 }
 
-function getTomorrow() {
-  var today = new Date(new Date().setHours(0,0,0,0));
+function getDay(diff) {
+  var today = new Date(new Date().toISOString());
+  today = new Date(today.setHours(0,0,0,0));
 
-  var tomorrow = new Date();
-  tomorrow = new Date(tomorrow.setDate(today.getDate() + 1));
-  tomorrow = new Date(tomorrow.setHours(0,0,0,0));
+  var newDay = new Date();
+  newDay = new Date(newDay.setDate(today.getDate() + diff));
+  newDay = new Date(newDay.setHours(0,0,0,0));
 
-  return tomorrow;
+  return newDay;
 }
 
 // Start server

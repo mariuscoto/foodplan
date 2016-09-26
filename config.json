@@ -1,0 +1,6 @@
+{
+  "mongo_url": "mongodb://admin:admin@ds039125.mlab.com:39125/heroku_b6h4cx6r",
+  "look_behind": 3,
+  "look_forward": 3,
+  "plate_retry": 3
+}

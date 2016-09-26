@@ -54,5 +54,14 @@ html
     </table>
 
 
-    h2 Mancarea de maine
-    h3= tomorrow.name
+    h2 Mancarea din zilele urmatoare
+    - if (days.length == 0)
+      p Nu s-a stabilit inca.
+    each plate in days
+      h3= plate.name
+
+    h2 Ingredientele din zilele urmatoare
+    - if (ingredients.length == 0)
+      p Nu s-au stabilit inca.
+    each ing in ingredients
+      p= ing
