@@ -129,7 +129,10 @@ function schedulePlates() {
   var future = getDay(+config.look_forward);
 
   // Get plates from defined interval
-  var query = {'date': {$gte: past, $lte: future}};
+  var query = {'date': {
+    $gte: {$add: {past: past.getTimezoneOffset() * 60000}},
+    $lte: {$add: {future: future.getTimezoneOffset() * 60000}}
+  }};
   Day.find(query).exec(gotDays);
 
   function gotDays(err, days) {
