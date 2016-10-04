@@ -41,8 +41,8 @@ app.get('/', function(req, res) {
 
     // Compute the scheduled plates for current week
     var weekday = new Date().getDay();
-    var present = getDay(-weekday);
-    var future  = getDay(7-weekday);
+    var present = getDay(-weekday).toUTCString();
+    var future  = getDay(7-weekday).toUTCString();
 
     var query = {'date': {$gte: present, $lte: future}};
     Day.find(query).exec(gotDays);
@@ -223,9 +223,11 @@ function shuffle(a) {
 }
 
 function getDay(diff) {
+  // Get start of the day
   var today = new Date(new Date().toISOString());
   today = new Date(today.setHours(0,0,0,0));
 
+  // Get new date based on diff
   var newDay = new Date();
   newDay = new Date(newDay.setDate(today.getDate() + diff));
   newDay = new Date(newDay.setHours(0,0,0,0));
