@@ -17,8 +17,8 @@ app.set('view engine', 'pug');
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
-// Run scheduler regularly
-cron.schedule('* * * * *', schedulePlates);
+// Run scheduler every Sunday
+cron.schedule('* * * * 6', schedulePlates);
 
 // Skip mongoose deprication warning on startup:
 // Mongoose: mpromise (mongoose's default promise library) is deprecated, plug
@@ -39,9 +39,10 @@ app.get('/', function(req, res) {
   function gotPLates(err, plates) {
     _self.plates = plates;
 
-    // Compute the scheduled plates
-    var present = getDay(0);
-    var future  = getDay(+config.look_forward);
+    // Compute the scheduled plates for current week
+    var weekday = new Date().getDay();
+    var present = getDay(-weekday);
+    var future  = getDay(7-weekday);
 
     var query = {'date': {$gte: present, $lte: future}};
     Day.find(query).exec(gotDays);
@@ -56,6 +57,11 @@ app.get('/', function(req, res) {
       days.forEach(function(day) {
         _self.plates.forEach(function(plate) {
           if (plate._id.toString() == day.plateID) {
+            // Convert plate
+            plate = plate.toJSON();
+            // Save date in plate
+            plate.date = day.date;
+            // Save plate
             _self.days.push(plate);
             // Save list of ingredients in plate
             var plateIngredients = [];

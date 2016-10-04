@@ -57,8 +57,13 @@ html
     h2 Mancarea din zilele urmatoare
     - if (days.length == 0)
       p Nu s-a stabilit inca.
+
+    - var week = ['Duminica', 'Luni', 'Marti', 'Miercuri', 'Joi', 'Vineri', 'Sambata']
     each plate in days
-      h3= plate.name
+      - if (plate.date.getDay() == new Date().getDay())
+        h4 #{week[plate.date.getDay()]}: #{plate.name}
+      - else
+        p #{week[plate.date.getDay()]}: #{plate.name}
 
     h2 Ingredientele din zilele urmatoare
     - if (ingredients.length == 0)
