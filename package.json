@@ -6,10 +6,10 @@
   "dependencies": {
     "body-parser": "^1.15.2",
     "express": "^4.14.0",
-    "mongoose": "^4.6.1",
-    "node-cron": "^1.1.2",
+    "mongoose": "^5.7.8",
+    "node-cron": "^2.0.3",
     "nodemon": "^1.10.2",
-    "pug": "^0.1.0"
+    "pug": "^2.0.4"
   },
   "devDependencies": {},
   "scripts": {

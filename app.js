@@ -24,7 +24,7 @@ cron.schedule('* * * * 6', schedulePlates);
 // Mongoose: mpromise (mongoose's default promise library) is deprecated, plug
 // in your own promise library instead: http://mongoosejs.com/docs/promises.html
 mongoose.Promise = global.Promise;
-mongoose.connect(config.mongo_url);
+mongoose.connect(config.mongo_url, { useUnifiedTopology: true, useNewUrlParser: true });
 
 // Require DB schemas
 var Plate = require('./models/plate');
